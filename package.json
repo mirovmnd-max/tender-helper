@@ -1,0 +1,14 @@
+{
+  "name": "tender-helper",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Прототип ИИ-помощника для подготовки заявок на госзакупки РК (статический сайт, без сервера)",
+  "type": "module",
+  "scripts": {
+    "start": "cd .. && python3 -m http.server 8765",
+    "test": "node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.0"
+  }
+}

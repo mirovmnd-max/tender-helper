@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тендер-помощник — подготовка заявки на госзакупки РК (прототип)</title>
+  <meta name="description" content="Прототип ИИ-помощника для поставщиков: требования лота, техспецификация, проверка цены, чек-лист и письма для госзакупок Казахстана.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#lot">
+      <img src="assets/favicon.svg" alt="" width="34" height="34">
+      <span><b>Тендер-помощник</b><small>прототип · госзакупки РК</small></span>
+    </a>
+    <div class="top-actions">
+      <div class="seg" id="lang-toggle" role="group" aria-label="Язык документов">
+        <span class="seg-label">Документы:</span>
+        <button type="button" data-lang="ru">RU</button>
+        <button type="button" data-lang="kz">ҚАЗ</button>
+      </div>
+      <label class="switch" title="Демо-режим: заранее подготовленные результаты без API-ключа">
+        <input type="checkbox" id="demo-toggle"><span class="track"></span><span>Демо</span>
+      </label>
+      <a href="#settings" class="icon-btn" title="Настройки" aria-label="Настройки">⚙</a>
+    </div>
+  </header>
+
+  <div id="demo-banner" class="banner demo" hidden>
+    <b>Демо-режим.</b> ИИ не вызывается: показаны заранее подготовленные результаты для вымышленного лота
+    «Уборка помещений школы в Алматы». Чтобы обработать свой документ, добавьте API-ключ в <a href="#settings">Настройках</a> и выключите демо.
+  </div>
+
+  <div class="layout">
+    <nav class="steps" id="steps">
+      <a href="#lot" data-view="lot"><i>1</i><span>Лот</span></a>
+      <a href="#requirements" data-view="requirements"><i>2</i><span>Требования</span></a>
+      <a href="#spec" data-view="spec"><i>3</i><span>Техспецификация</span></a>
+      <a href="#price" data-view="price"><i>4</i><span>Цена</span></a>
+      <a href="#checklist" data-view="checklist"><i>5</i><span>Чек-лист</span></a>
+      <a href="#docs" data-view="docs"><i>6</i><span>Письма и КП</span></a>
+      <a href="#settings" data-view="settings" class="nav-settings"><i>⚙</i><span>Настройки</span></a>
+    </nav>
+
+    <main id="main">
+      <!-- 1. ЛОТ -->
+      <section class="view" id="view-lot">
+        <div class="view-head">
+          <h1>Документация лота</h1>
+          <p>Загрузите конкурсную документацию или техспецификацию заказчика (PDF, DOCX, TXT) либо вставьте текст. Файлы читаются прямо в браузере и никуда не загружаются.</p>
+        </div>
+        <div class="card">
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple>
+            <span class="dz-icon">📄</span>
+            <span><b>Перетащите файлы сюда</b> или нажмите, чтобы выбрать</span>
+            <small>PDF с текстовым слоем, DOCX, TXT · можно несколько файлов</small>
+          </label>
+          <div id="file-status" class="file-status"></div>
+          <div class="row-between">
+            <label for="lot-text" class="label">Текст документации</label>
+            <small class="muted" id="char-count">0 символов</small>
+          </div>
+          <textarea id="lot-text" rows="14" placeholder="Вставьте сюда текст конкурсной документации, техспецификации заказчика или объявления…"></textarea>
+          <div id="sample-note" class="note sample" hidden>ПРИМЕР: вымышленный лот для демонстрации. Заказчик, номер лота и суммы ненастоящие.</div>
+          <div class="actions">
+            <button type="button" class="btn ghost" id="btn-load-sample">Загрузить пример лота</button>
+            <button type="button" class="btn ghost" id="btn-clear-lot">Очистить</button>
+            <span class="grow"></span>
+            <button type="button" class="btn primary" id="btn-extract">Извлечь требования →</button>
+          </div>
+        </div>
+        <div class="tips">
+          <h3>Почему заявки отклоняют чаще всего</h3>
+          <ul>
+            <li><b>Цена:</b> сумма за весь объём вместо цены за единицу, не учтён или лишний НДС, арифметика.</li>
+            <li><b>Техспецификация:</b> не те единицы измерения, пропущенные пункты, лишние характеристики, товарный знак без «аналога».</li>
+            <li><b>Квалификация:</b> недостоверные сведения о персонале и опыте, нет подтверждающих документов.</li>
+            <li><b>Сроки:</b> заявка в последний час, истёкшая ЭЦП, не внесено обеспечение.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 2. ТРЕБОВАНИЯ -->
+      <section class="view" id="view-requirements" hidden>
+        <div class="view-head">
+          <h1>Требования заказчика</h1>
+          <p>ИИ разобрал документацию. Проверьте данные лота и список требований: текст можно править прямо в карточках.</p>
+        </div>
+        <div class="card">
+          <h2>Данные лота</h2>
+          <div class="grid2" id="lot-meta">
+            <label>Номер лота<input data-meta="number"></label>
+            <label>Способ закупки
+              <select data-meta="methodKey">
+                <option value="konkurs">Конкурс</option>
+                <option value="auction">Аукцион</option>
+                <option value="zcp">Запрос ценовых предложений</option>
+                <option value="single">Из одного источника</option>
+                <option value="samruk">Самрук-Казына (по документации)</option>
+              </select>
+            </label>
+            <label class="span2">Наименование лота<input data-meta="name"></label>
+            <label class="span2">Заказчик<input data-meta="customer"></label>
+            <label>Выделенная сумма, ₸<input data-meta="amount" inputmode="decimal"></label>
+            <label>Окончание приёма заявок<input data-meta="deadline" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ"></label>
+            <label>Срок поставки / оказания<input data-meta="term"></label>
+            <label>Место<input data-meta="place"></label>
+          </div>
+        </div>
+        <div id="warnings" class="card warn-card" hidden></div>
+        <div class="card">
+          <div class="row-between">
+            <h2>Требования <span class="count" id="req-count"></span></h2>
+            <button type="button" class="btn small ghost" id="btn-add-req">+ Добавить</button>
+          </div>
+          <div id="req-list" class="req-list"><p class="empty">Пока пусто. Загрузите документацию на шаге 1 и нажмите «Извлечь требования».</p></div>
+        </div>
+        <div class="actions sticky-actions">
+          <a class="btn ghost" href="#lot">← К документации</a>
+          <span class="grow"></span>
+          <button type="button" class="btn primary" id="btn-gen-spec">Сформировать техспецификацию →</button>
+        </div>
+      </section>
+
+      <!-- 3. ТЕХСПЕЦИФИКАЦИЯ -->
+      <section class="view" id="view-spec" hidden>
+        <div class="view-head">
+          <h1>Техническая спецификация <span class="lang-badge" data-lang-badge></span></h1>
+          <p>Ответ на каждое требование заказчика пункт в пункт. Тексты в колонке «Ваше предложение» можно редактировать. Подсказки в документ не попадают.</p>
+        </div>
+        <div class="card">
+          <div id="spec-check" class="spec-check"></div>
+          <div class="table-wrap">
+            <table class="spec-table" id="spec-table">
+              <thead><tr><th>№</th><th>Требование заказчика</th><th>Ваше предложение</th><th>Подсказка</th></tr></thead>
+              <tbody><tr><td colspan="4" class="empty">Сначала извлеките требования (шаг 2).</td></tr></tbody>
+            </table>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn ghost" id="btn-regen-spec">Сгенерировать заново</button>
+            <span class="grow"></span>
+            <button type="button" class="btn" id="btn-spec-docx">Скачать DOCX</button>
+            <button type="button" class="btn" id="btn-spec-pdf">PDF / печать</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. ЦЕНА -->
+      <section class="view" id="view-price" hidden>
+        <div class="view-head">
+          <h1>Проверка ценового предложения</h1>
+          <p>Расчёт без ИИ: арифметика, цена за единицу против суммы за объём, НДС, превышение выделенной суммы и обеспечение заявки.</p>
+        </div>
+        <div class="card">
+          <div class="grid4">
+            <label>Выделенная сумма лота, ₸<input id="p-allocated" inputmode="decimal"></label>
+            <label>Способ закупки
+              <select id="p-method">
+                <option value="konkurs">Конкурс — 1%</option>
+                <option value="auction">Аукцион — 1%</option>
+                <option value="zcp">Запрос ценовых предложений — 3%</option>
+                <option value="single">Из одного источника — нет</option>
+                <option value="samruk">Самрук-Казына — свой %</option>
+              </select>
+            </label>
+            <label id="p-custom-wrap" hidden>Обеспечение, %<input id="p-custom-pct" inputmode="decimal"></label>
+            <label>Суммы в документации
+              <select id="p-vat-mode">
+                <option value="without">без НДС (госзакупки с 2026 г.)</option>
+                <option value="with">с НДС</option>
+              </select>
+            </label>
+            <label>Ставка НДС, %
+              <select id="p-vat-rate">
+                <option value="16">16% (с 01.01.2026)</option>
+                <option value="12">12% (до 2026)</option>
+                <option value="5">5% (льготная)</option>
+                <option value="0">0%</option>
+              </select>
+            </label>
+            <label class="check-inline"><input type="checkbox" id="p-vat-payer"> Мы плательщик НДС</label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="price-table" id="price-table">
+              <thead><tr>
+                <th>№</th><th>Наименование</th><th>Ед. изм.</th><th>Кол-во</th>
+                <th title="Из расчёта выделенной суммы, если есть">Цена заказчика за ед.</th>
+                <th>Ваша цена за ед. <small>(без НДС)</small></th>
+                <th>Сумма в заявке</th><th>Расчёт</th><th></th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn ghost" id="btn-add-row">+ Строка</button>
+            <button type="button" class="btn ghost" id="btn-price-sample">Пример с ошибками</button>
+          </div>
+        </div>
+        <div class="grid-results">
+          <div class="card" id="price-totals"></div>
+          <div class="card" id="price-issues"></div>
+        </div>
+      </section>
+
+      <!-- 5. ЧЕК-ЛИСТ -->
+      <section class="view" id="view-checklist" hidden>
+        <div class="view-head">
+          <h1>Чек-лист заявки</h1>
+          <p>Ориентир по Правилам осуществления государственных закупок (приказ МФ РК № 687). Точный состав документов всегда сверяйте с документацией закупки. Отметки сохраняются в этом браузере.</p>
+        </div>
+        <div class="card">
+          <div class="progress"><div class="bar" id="cl-bar"></div></div>
+          <p class="muted" id="cl-progress"></p>
+          <div class="grid2 dates">
+            <label>Окончание приёма заявок<input type="datetime-local" id="cl-deadline"></label>
+            <label>ЭЦП действует до<input type="date" id="cl-ecp"></label>
+          </div>
+          <div id="cl-alerts"></div>
+        </div>
+        <div id="checklist"></div>
+        <div class="actions"><button type="button" class="btn ghost" id="btn-cl-reset">Сбросить отметки</button></div>
+      </section>
+
+      <!-- 6. ДОКУМЕНТЫ -->
+      <section class="view" id="view-docs" hidden>
+        <div class="view-head">
+          <h1>Письма и коммерческое предложение <span class="lang-badge" data-lang-badge></span></h1>
+          <p>Реквизиты компании сохраняются в этом браузере. Данные лота берутся с шага 2, цены — с шага 4, приложения — из чек-листа.</p>
+        </div>
+        <details class="card" id="company-card" open>
+          <summary><h2>Реквизиты компании</h2></summary>
+          <div class="grid2" id="company-form">
+            <label class="span2">Наименование (рус.)<input data-co="name" placeholder="ТОО «…»"></label>
+            <label class="span2">Наименование (каз.)<input data-co="nameKz" placeholder="«…» ЖШС"></label>
+            <label>БИН<input data-co="bin" inputmode="numeric" maxlength="12"><small class="field-msg" id="bin-msg"></small></label>
+            <label>Руководитель (ФИО)<input data-co="director"></label>
+            <label>Должность (рус.)<input data-co="position" placeholder="Директор"></label>
+            <label>Должность (каз.)<input data-co="positionKz" placeholder="Директор"></label>
+            <label class="span2">Адрес (рус.)<input data-co="address"></label>
+            <label class="span2">Адрес (каз.)<input data-co="addressKz"></label>
+            <label>Телефон<input data-co="phone" inputmode="tel"></label>
+            <label>E-mail<input data-co="email" inputmode="email"></label>
+            <label>Банк<input data-co="bank"></label>
+            <label>ИИК (IBAN)<input data-co="iik"></label>
+            <label>БИК<input data-co="bik"></label>
+            <label>Исходящий №<input data-co="outNo" placeholder="15"></label>
+          </div>
+          <div class="actions"><button type="button" class="btn ghost small" id="btn-co-sample">Заполнить примером</button></div>
+        </details>
+        <div class="card">
+          <div class="tabs" id="doc-tabs">
+            <button type="button" data-doc="guarantee" class="active">Гарантийное письмо</button>
+            <button type="button" data-doc="cover">Сопроводительное письмо</button>
+            <button type="button" data-doc="proposal">Коммерческое предложение</button>
+          </div>
+          <div id="doc-warn"></div>
+          <div class="doc-preview" id="doc-preview"></div>
+          <div class="actions">
+            <span class="grow"></span>
+            <button type="button" class="btn" id="btn-doc-docx">Скачать DOCX</button>
+            <button type="button" class="btn" id="btn-doc-pdf">PDF / печать</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- НАСТРОЙКИ -->
+      <section class="view" id="view-settings" hidden>
+        <div class="view-head">
+          <h1>Настройки ИИ</h1>
+          <p>Подойдёт любой OpenAI-совместимый API (Chat Completions): OpenAI, xAI, OpenRouter и другие.</p>
+        </div>
+        <div class="card">
+          <div class="grid2">
+            <label>Провайдер
+              <select id="s-provider"></select>
+            </label>
+            <label>Модель<input id="s-model" placeholder="gpt-5.4-mini"></label>
+            <label class="span2">Base URL<input id="s-base" placeholder="https://api.openai.com/v1"></label>
+            <label class="span2">API-ключ
+              <span class="key-row"><input id="s-key" type="password" autocomplete="off" placeholder="sk-…"><button type="button" class="btn small ghost" id="btn-key-show">Показать</button></span>
+            </label>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn ghost" id="btn-test-ai">Проверить подключение</button>
+            <button type="button" class="btn ghost danger" id="btn-del-key">Удалить ключ</button>
+            <span class="muted" id="s-status"></span>
+          </div>
+        </div>
+        <div class="card privacy">
+          <h2>Конфиденциальность</h2>
+          <ul>
+            <li>Ключ хранится только в localStorage этого браузера и отправляется только на указанный Base URL.</li>
+            <li>Файлы читаются в браузере. Текст документации уходит только выбранному ИИ-провайдеру и только когда вы нажимаете «Извлечь требования» или «Сформировать техспецификацию».</li>
+            <li>У прототипа нет сервера: реквизиты, отметки и черновики остаются в этом браузере.</li>
+            <li>Не используйте ключ с большим лимитом на общем компьютере. Для пробы лучше завести отдельный ключ с ограничением расходов.</li>
+          </ul>
+          <div class="actions"><button type="button" class="btn ghost danger" id="btn-wipe">Удалить все данные прототипа из браузера</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="disclaimer">
+    Прототип. Сервис только готовит черновики документов и ничего не подаёт: заявку вы подписываете своей ЭЦП и подаёте сами на портале
+    <a href="https://www.goszakup.gov.kz" target="_blank" rel="noopener">goszakup.gov.kz</a> или Самрук-Казына. ИИ может ошибаться — сверяйте всё с документацией закупки.
+  </footer>
+
+  <div id="busy" class="busy" hidden><div class="spinner"></div><p id="busy-text">ИИ работает…</p></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
